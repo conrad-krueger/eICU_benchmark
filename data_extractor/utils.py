@@ -24,7 +24,7 @@ var_to_consider = ['glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
 
 #Filter on useful column for this benchmark
 def filter_patients_on_columns_model(patients):
-    columns = ['patientunitstayid', 'age', 'apacheadmissiondx',
+    columns = ['patientunitstayid', 'apacheadmissiondx',
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
                'hospitaldischargestatus', 'unitdischargeoffset', 'unitdischargestatus']
     return patients[columns]
@@ -64,7 +64,6 @@ def transform_dx_into_id(df):
 #Extract data from patient table
 def read_patients_table(eicu_path, output_path):
     pats = dataframe_from_csv(os.path.join(eicu_path, 'patient.csv'), index_col=False)
-    pats = filter_patients_on_age(pats, min_age=18, max_age=89)
     pats = filter_one_unit_stay(pats)
     pats = filter_patients_on_columns(pats)
     pats.update(transform_hospital_discharge_status(pats.hospitaldischargestatus))
@@ -79,13 +78,6 @@ def cohort_stay_id(patients):
     cohort = patients.patientunitstayid.unique()
     return cohort
 
-#filter on adult patients
-def filter_patients_on_age(patient, min_age=18, max_age=89):
-    patient.ix[patient['age'] == '> 89', 'age'] = 90
-    patient[['age']] = patient[['age']].fillna(-1)
-    patient[['age']] = patient[['age']].astype(int)
-    patient = patient.ix[(patient.age >= min_age) & (patient.age <= max_age)]
-    return patient
 
 #filter those having just one stay in unit
 def filter_one_unit_stay(patients):
@@ -96,7 +88,7 @@ def filter_one_unit_stay(patients):
 
 #Filter on useful columns from patient table
 def filter_patients_on_columns(patients):
-    columns = ['patientunitstayid', 'age', 'apacheadmissiondx',
+    columns = ['patientunitstayid', 'apacheadmissiondx',
                'hospitaladmityear', 'hospitaldischargeyear', 'hospitaldischargeoffset',
 
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
@@ -412,7 +404,7 @@ def prepare_categorical_variables(root_dir):
     'FiO2','Heart Rate', 'Invasive BP Diastolic',
     'Invasive BP Systolic', 'MAP (mmHg)',  'O2 Saturation',
     'Respiratory Rate', 'Temperature (C)', 'admissionheight',
-    'admissionweight', 'age', 'glucose', 'pH',
+    'admissionweight', 'glucose', 'pH',
     'hospitaladmitoffset',
     'hospitaldischargestatus','unitdischargeoffset',
     'unitdischargestatus']
@@ -442,7 +434,7 @@ def prepare_categorical_variables(root_dir):
 def filter_decom_data(all_df):
     dec_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx',
     'GCS Total', 'Eyes', 'Motor', 'Verbal',
-    'admissionheight', 'admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+    'admissionheight', 'admissionweight', 'Heart Rate', 'MAP (mmHg)',
     'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
     'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
     'unitdischargestatus']
@@ -513,7 +505,7 @@ def normalize_data_dec(config, data, train_idx, test_idx):
     train = train[col_used]
     test = test[col_used]
 
-    cols_normalize = ['admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+    cols_normalize = ['admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
        'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
        'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH']
     feat_train_minmax = train[cols_normalize]
@@ -554,7 +546,7 @@ def filter_mortality_data(all_df):
     all_df.drop(columns='itemoffsetday',inplace=True)
     mort_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx',
                 'GCS Total', 'Eyes', 'Motor', 'Verbal',
-                'admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+                'admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
                 'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
                 'unitdischargeoffset','hospitaldischargestatus']
@@ -593,7 +585,7 @@ def normalize_data_mort(config, data, train_idx, test_idx):
     train = train[col_used]
     test = test[col_used]
 
-    cols_normalize = ['admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+    cols_normalize = ['admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
        'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
        'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH']
     feat_train_minmax = train[cols_normalize]
@@ -640,7 +632,7 @@ def normalize_data_phe(config, data, train_idx, test_idx):
 
     train = train[col_used]
     test = test[col_used]
-    cols_normalize = ['admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+    cols_normalize = ['admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
        'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
        'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH']
     feat_train_minmax = train[cols_normalize]
@@ -666,7 +658,7 @@ def filter_phenotyping_data(all_df):
     all_df['RLOS'] = np.nan
     phen_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 
                 'GCS Total', 'Eyes', 'Motor', 'Verbal',
-                'admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+                'admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
                 'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH','RLOS']
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset'] / (1440)
@@ -747,13 +739,12 @@ def diag_df_to_numpy(df,diag_g):
     return df_array,df_label
 
 
-
 #Remaining Length of Stay
 
 def filter_rlos_data(all_df):
     los_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx',
             'GCS Total', 'Eyes', 'Motor', 'Verbal',
-            'admissionheight', 'admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
+            'admissionheight', 'admissionweight', 'Heart Rate', 'MAP (mmHg)',
             'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
             'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
             'unitdischargeoffset', 'RLOS']
