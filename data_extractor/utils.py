@@ -24,7 +24,7 @@ var_to_consider = ['glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
 
 #Filter on useful column for this benchmark
 def filter_patients_on_columns_model(patients):
-    columns = ['patientunitstayid', 'gender', 'age', 'ethnicity', 'apacheadmissiondx',
+    columns = ['patientunitstayid', 'age', 'ethnicity', 'apacheadmissiondx',
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
                'hospitaldischargestatus', 'unitdischargeoffset', 'unitdischargestatus']
     return patients[columns]
@@ -33,12 +33,6 @@ def filter_patients_on_columns_model(patients):
 def cohort_stay_id(patients):
     cohort = patients.patientunitstayid.unique()
     return cohort
-
-#Convert gender from F/M to numbers
-g_map = {'Female': 1, 'Male': 2, '': 0, 'NaN': 0, 'Unknown': 0, 'Other': 0}
-def transform_gender(gender_series):
-    global g_map
-    return {'gender': gender_series.fillna('').apply(lambda s: g_map[s] if s in g_map else g_map[''])}
 
 
 #Convert ethnicity to numbers
@@ -80,7 +74,6 @@ def read_patients_table(eicu_path, output_path):
     pats = filter_patients_on_age(pats, min_age=18, max_age=89)
     pats = filter_one_unit_stay(pats)
     pats = filter_patients_on_columns(pats)
-    pats.update(transform_gender(pats.gender))
     pats.update(transform_ethnicity(pats.ethnicity))
     pats.update(transform_hospital_discharge_status(pats.hospitaldischargestatus))
     pats.update(transform_unit_discharge_status(pats.unitdischargestatus))
@@ -111,7 +104,7 @@ def filter_one_unit_stay(patients):
 
 #Filter on useful columns from patient table
 def filter_patients_on_columns(patients):
-    columns = ['patientunitstayid', 'gender', 'age', 'ethnicity', 'apacheadmissiondx',
+    columns = ['patientunitstayid', 'age', 'ethnicity', 'apacheadmissiondx',
                'hospitaladmityear', 'hospitaldischargeyear', 'hospitaldischargeoffset',
 
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
@@ -423,7 +416,7 @@ def all_df_into_one_df(output_path):
 def prepare_categorical_variables(root_dir):
     columns_ord = [ 'patientunitstayid', 'itemoffset',
     'Eyes', 'Motor', 'GCS Total', 'Verbal',
-    'ethnicity', 'gender','apacheadmissiondx',
+    'ethnicity', 'apacheadmissiondx',
     'FiO2','Heart Rate', 'Invasive BP Diastolic',
     'Invasive BP Systolic', 'MAP (mmHg)',  'O2 Saturation',
     'Respiratory Rate', 'Temperature (C)', 'admissionheight',
@@ -433,13 +426,11 @@ def prepare_categorical_variables(root_dir):
     'unitdischargestatus']
     all_df = pd.read_csv(os.path.join(root_dir, 'all_data.csv'))
 
-    all_df = all_df[all_df.gender != 0] #unknown gender is dropped
     all_df = all_df[all_df.hospitaldischargestatus != 2] #unknown hospital discharge is dropped
     all_df = all_df[columns_ord]
 
     all_df.apacheadmissiondx = all_df.apacheadmissiondx.astype(int)
     all_df.ethnicity = all_df.ethnicity.astype(int)
-    all_df.gender = all_df.gender.astype(int)
     all_df['GCS Total'] = all_df['GCS Total'].astype(int)
     all_df['Eyes'] = all_df['Eyes'].astype(int)
     all_df['Motor'] = all_df['Motor'].astype(int)
@@ -448,28 +439,25 @@ def prepare_categorical_variables(root_dir):
     all_df.ethnicity = all_df.ethnicity + 1
     dxmax = all_df.apacheadmissiondx.max()
     etmax = all_df.ethnicity.max()
-    gemax = all_df.gender.max()
     totmax = all_df['GCS Total'].max()
     eyemax = all_df['Eyes'].max()
     motmax = all_df['Motor'].max()
     vermax = all_df['Verbal'].max()
     all_df.ethnicity = all_df.ethnicity + dxmax
-    all_df.gender = all_df.gender + dxmax+etmax
-    all_df['GCS Total'] = all_df['GCS Total'] +dxmax+etmax+gemax
-    all_df['Eyes'] = all_df['Eyes'] +dxmax+etmax+gemax+totmax
-    all_df['Motor'] = all_df['Motor'] +dxmax+etmax+gemax+totmax+eyemax
-    all_df['Verbal'] = all_df['Verbal'] +dxmax+etmax+gemax+totmax+eyemax+motmax
+    all_df['GCS Total'] = all_df['GCS Total'] +dxmax+etmax
+    all_df['Eyes'] = all_df['Eyes'] +dxmax+etmax+totmax
+    all_df['Motor'] = all_df['Motor'] +dxmax+etmax+totmax+eyemax
+    all_df['Verbal'] = all_df['Verbal'] +dxmax+etmax+totmax+eyemax+motmax
     return all_df
 
 #Decompensation
 def filter_decom_data(all_df):
-    dec_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity', 'gender',
+    dec_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity',
     'GCS Total', 'Eyes', 'Motor', 'Verbal',
     'admissionheight', 'admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
     'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
     'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
     'unitdischargestatus']
-    # all_df = all_df[all_df.gender != 0]
     # all_df = all_df[all_df.hospitaldischargestatus!=2]
     all_df['RLOS'] = np.nan
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset'] / (1440)
@@ -572,12 +560,11 @@ def pad(data, max_len=200):
 
 # Mortality
 def filter_mortality_data(all_df):
-    all_df = all_df[all_df.gender != 0]
     all_df = all_df[all_df.hospitaldischargestatus!=2]
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset']/(1440)
     all_df['itemoffsetday'] = (all_df['itemoffset']/24)
     all_df.drop(columns='itemoffsetday',inplace=True)
-    mort_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity','gender',
+    mort_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity',
                 'GCS Total', 'Eyes', 'Motor', 'Verbal',
                 'admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
@@ -687,10 +674,9 @@ def normalize_data_phe(config, data, train_idx, test_idx):
     return (train, nrows_train), (test, nrows_test)
 
 def filter_phenotyping_data(all_df):
-    all_df = all_df[all_df.gender != 0]
     all_df = all_df[all_df.hospitaldischargestatus!=2]
     all_df['RLOS'] = np.nan
-    phen_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity','gender',
+    phen_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity',
                 'GCS Total', 'Eyes', 'Motor', 'Verbal',
                 'admissionheight','admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
@@ -777,7 +763,7 @@ def diag_df_to_numpy(df,diag_g):
 #Remaining Length of Stay
 
 def filter_rlos_data(all_df):
-    los_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity', 'gender',
+    los_cols = ['patientunitstayid', 'itemoffset', 'apacheadmissiondx', 'ethnicity',
             'GCS Total', 'Eyes', 'Motor', 'Verbal',
             'admissionheight', 'admissionweight', 'age', 'Heart Rate', 'MAP (mmHg)',
             'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
@@ -786,7 +772,6 @@ def filter_rlos_data(all_df):
 
     # import pdb;pdb.set_trace()
 
-    all_df = all_df[all_df.gender != 0]
     all_df = all_df[all_df.hospitaldischargestatus!=2]
     all_df['RLOS'] = np.nan
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset'] / (1440)
