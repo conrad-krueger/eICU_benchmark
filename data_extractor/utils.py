@@ -74,7 +74,7 @@ def filter_one_unit_stay(patients):
 #Filter on useful columns from patient table
 #CONRAD - rm admityear
 def filter_patients_on_columns(patients):
-    columns = ['patientunitstayid', 'hospitaldischargeyear', 'hospitaldischargeoffset',
+    columns = ['patientunitstayid', 'hospitaladmityear', 'hospitaldischargeyear', 'hospitaldischargeoffset',
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
                'hospitaldischargestatus', 'unitdischargeoffset', 'unitdischargestatus']
     return patients[columns]
