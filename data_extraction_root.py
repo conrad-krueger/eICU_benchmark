@@ -23,6 +23,11 @@ def data_extraction_root(args):
     utils.break_up_lab_by_unit_stay(lab, args.output_dir, stayid=stay_id, verbose=1)
     del lab
 
+    print("reading nurseAssessment table")
+    na = utils.read_na_table(args.eicu_dir)
+    utils.break_up_na_by_unit_stay(lab, args.output_dir, stayid=stay_id, verbose=1)
+    del na
+
     print("reading nurseCharting table, might take some time")
     nc = utils.read_nc_table(args.eicu_dir)
     utils.break_up_stays_by_unit_stay_nc(nc, args.output_dir, stayid=stay_id, verbose=1)

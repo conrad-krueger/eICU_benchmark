@@ -34,7 +34,7 @@ class Config():
 
 
         # decompensation
-        self.dec_cat = ['GCS Total', 'Eyes', 'Motor', 'Verbal']
+        self.dec_cat = ['GCS Total', 'Eyes', 'Motor', 'Verbal', 'Capillary Refill']
         self.dec_num = ['admissionheight', 'admissionweight', 'Heart Rate', 'MAP (mmHg)','Invasive BP Diastolic', 'Invasive BP Systolic',
                         'O2 Saturation', 'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH']
 

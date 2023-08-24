@@ -11,15 +11,13 @@ import shutil
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.externals.joblib import dump, load
 
-
 def dataframe_from_csv(path, header=0, index_col=False):
     return pd.read_csv(path, header=header, index_col=index_col)
 
 
 var_to_consider = ['glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
                    'O2 Saturation', 'Respiratory Rate', 'Motor', 'Eyes', 'MAP (mmHg)',
-                   'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)']
-
+                   'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)', 'Capillary Refill']
 
 
 #Filter on useful column for this benchmark
@@ -74,8 +72,9 @@ def filter_one_unit_stay(patients):
     return patients
 
 #Filter on useful columns from patient table
+#CONRAD - rm admityear
 def filter_patients_on_columns(patients):
-    columns = ['patientunitstayid','hospitaladmityear', 'hospitaldischargeyear', 'hospitaldischargeoffset',
+    columns = ['patientunitstayid', 'hospitaldischargeyear', 'hospitaldischargeoffset',
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
                'hospitaldischargestatus', 'unitdischargeoffset', 'unitdischargestatus']
     return patients[columns]
@@ -98,6 +97,67 @@ def break_up_stays_by_unit_stay(pats, output_path, stayid=None, verbose=1):
     if verbose:
         sys.stdout.write('DONE!\n')
 
+##Here we deal with the nurseAssessment table - CONRAD
+#https://physionet.org/content/eicu-crd-demo/2.0.1/nurseAssessment.csv.gz
+def filter_na_on_columns(na):
+    columns = ['patientunitstayid', 'nurseassessoffset', 'cellattribute', 'cellattributevalue']
+    return na[columns]
+
+#Rename the columns in order to have a unified name
+def rename_na_columns(na):
+    na.rename(index=str, columns={'nurseassessoffset': "itemoffset", "cellattribute": "itemname",
+                                   "cellattributevalue": "itemvalue"}, inplace=True)
+    return na
+
+#Select the Capillary Refill measurement from nurseAssessment table
+def item_name_selected_from_na(na, items):
+    na = na[na['itemname'].isin(items)]
+    return na
+
+#Check if the Capillary Refill measurement is valid
+def check_na(x):
+    if x != "< 2 seconds" and x != "normal":
+        x = np.nan
+    return x
+def check_itemvalue_na(df):
+    df['itemvalue'] = df['itemvalue'].apply(lambda x: check_na(x))
+    return df
+
+
+#Encodes the two outcomes of a capillary refill test. Normal and < 2 seconds.
+def encode_cr_result(na):
+    na["itemvalue"] = na["itemvalue"].replace({"normal": 0, "< 2 seconds": 1})
+    return na
+
+def read_na_table(eicu_path):
+    na = dataframe_from_csv(os.path.join(eicu_path, 'nurseAssessment.csv'), index_col=False)
+    na = filter_na_on_columns(na)
+    na = rename_na_columns(na)
+    items = ["Capillary Refill"]
+    na = item_name_selected_from_na(na, items)
+    na = check_itemvalue_na(na)
+    na = encode_cr_result(na)
+    return na
+
+#Write the nc values of each patient into a na.csv file
+def break_up_stays_by_unit_stay_na(nurseAssess, output_path, stayid=None, verbose=1):
+    unit_stays = nurseAssess.patientunitstayid.unique() if stayid is None else stayid
+    nb_unit_stays = unit_stays.shape[0]
+    for i, stay_id in enumerate(unit_stays):
+        if verbose:
+            sys.stdout.write('\rStayID {0} of {1}...'.format(i + 1, nb_unit_stays))
+        dn = os.path.join(output_path, str(stay_id))
+        try:
+            os.makedirs(dn)
+        except:
+            pass
+
+        nurseAssess.ix[nurseAssess.patientunitstayid == stay_id].sort_values(by='itemoffset').to_csv(
+            os.path.join(dn, 'na.csv'), index=False)
+    if verbose:
+        sys.stdout.write('DONE!\n')
+
+## END
 
 ## Here we deal with lab table
 #Select the useful columns from lab table
@@ -253,7 +313,8 @@ def extract_time_series_from_subject(t_path):
             pat = dataframe_from_csv(os.path.join(t_path, stay_dir, 'pats.csv'))
             lab = dataframe_from_csv(os.path.join(t_path, stay_dir, 'lab.csv'))
             nc = dataframe_from_csv(os.path.join(t_path, stay_dir, 'nc.csv'))
-            nclab = pd.concat([nc, lab]).sort_values(by=['itemoffset'])
+            na = dataframe_from_csv(os.path.join(t_path, stay_dir, 'na.csv'))
+            nclab = pd.concat([nc, lab, na]).sort_values(by=['itemoffset'])
             timeepisode = convert_events_to_timeseries(nclab, variables=var_to_consider)
             nclabpat = pd.merge(timeepisode, pat, on='patientunitstayid')
             df = binning(nclabpat, 60)
@@ -292,6 +353,7 @@ def check_in_range(df):
     df['O2 Saturation'].clip(0, 100, inplace=True)
     df['Respiratory Rate'].clip(0, 100, inplace=True)
     df['Temperature (C)'].clip(26, 45, inplace=True)
+    df['Capillary Refill'].clip(0, 1, inplace=True)
     return df
 
 #Read each patient nc, lab and demographics and put all in one csv
@@ -315,7 +377,7 @@ def convert_events_to_timeseries(events, variable_column='itemname', variables=[
 def binning(df, x=60):
     null_columns = ['glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
                     'O2 Saturation', 'Respiratory Rate', 'Motor', 'Eyes', 'MAP (mmHg)',
-                    'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)']
+                    'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)', 'Capillary Refill']
 
     df['glucose'] = df['glucose'].shift(-1)
     df.dropna(how='all', subset=null_columns, inplace=True)
@@ -330,7 +392,7 @@ def imputer(dataframe, strategy='zero'):
     normal_values = {'Eyes': 4, 'GCS Total': 15, 'Heart Rate': 86, 'Motor': 6, 'Invasive BP Diastolic': 56,
                      'Invasive BP Systolic': 118, 'O2 Saturation': 98, 'Respiratory Rate': 19,
                      'Verbal': 5, 'glucose': 128, 'admissionweight': 81, 'Temperature (C)': 36,
-                     'admissionheight': 170, "MAP (mmHg)": 77, "pH": 7.4, "FiO2": 0.21}
+                     'admissionheight': 170, "MAP (mmHg)": 77, "pH": 7.4, "FiO2": 0.21, 'Capillary Refill': 0}
 
     if strategy not in ['zero', 'back', 'forward', 'normal']:
         raise ValueError("impute strategy is invalid")
@@ -391,7 +453,7 @@ def prepare_categorical_variables(root_dir):
     'admissionweight', 'glucose', 'pH',
     'hospitaladmitoffset',
     'hospitaldischargestatus','unitdischargeoffset',
-    'unitdischargestatus']
+    'unitdischargestatus', 'Capillary Refill']
     all_df = pd.read_csv(os.path.join(root_dir, 'all_data.csv'))
 
     all_df = all_df[all_df.hospitaldischargestatus != 2] #unknown hospital discharge is dropped
@@ -405,9 +467,11 @@ def prepare_categorical_variables(root_dir):
     eyemax = all_df['Eyes'].max()
     motmax = all_df['Motor'].max()
     vermax = all_df['Verbal'].max()
+    capmax = all_df["Capillary Refill"].max()
     all_df['Eyes'] = all_df['Eyes']+totmax
     all_df['Motor'] = all_df['Motor']+totmax+eyemax
     all_df['Verbal'] = all_df['Verbal']+totmax+eyemax+motmax
+    all_df['Capillary Refill'] = all_df['Capillary Refill']+vermax+totmax+eyemax+motmax
     return all_df
 
 #Decompensation
@@ -417,7 +481,7 @@ def filter_decom_data(all_df):
     'admissionheight', 'admissionweight', 'Heart Rate', 'MAP (mmHg)',
     'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
     'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
-    'unitdischargestatus']
+    'unitdischargestatus', 'Capillary Refill']
     # all_df = all_df[all_df.hospitaldischargestatus!=2]
     all_df['RLOS'] = np.nan
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset'] / (1440)
@@ -529,7 +593,7 @@ def filter_mortality_data(all_df):
                 'admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
                 'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH',
-                'unitdischargeoffset','hospitaldischargestatus']
+                'unitdischargeoffset','hospitaldischargestatus', 'Capillary Refill']
 
     all_mort = all_df[mort_cols]
     all_mort = all_mort[all_mort['unitdischargeoffset'] >=2]
@@ -640,7 +704,7 @@ def filter_phenotyping_data(all_df):
                 'GCS Total', 'Eyes', 'Motor', 'Verbal',
                 'admissionheight','admissionweight', 'Heart Rate', 'MAP (mmHg)',
                 'Invasive BP Diastolic', 'Invasive BP Systolic', 'O2 Saturation',
-                'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH','RLOS']
+                'Respiratory Rate', 'Temperature (C)', 'glucose', 'FiO2', 'pH','RLOS', 'Capillary Refill']
     all_df['unitdischargeoffset'] = all_df['unitdischargeoffset'] / (1440)
     all_df['itemoffsetday'] = (all_df['itemoffset'] / 24)
     all_df['RLOS'] = (all_df['unitdischargeoffset'] - all_df['itemoffsetday'])
@@ -726,7 +790,7 @@ def filter_rlos_data(all_df):
             'Verbal', 'admissionheight', 'admissionweight', 'Heart Rate', 
             'MAP (mmHg)', 'Invasive BP Diastolic', 'Invasive BP Systolic', 
             'O2 Saturation', 'Respiratory Rate', 'Temperature (C)', 'glucose', 
-            'FiO2', 'pH', 'unitdischargeoffset', 'RLOS']
+            'FiO2', 'pH', 'unitdischargeoffset', 'RLOS', 'Capillary Refill']
 
     # import pdb;pdb.set_trace()
 
