@@ -25,7 +25,7 @@ def data_extraction_root(args):
 
     print("reading nurseAssessment table")
     na = utils.read_na_table(args.eicu_dir)
-    utils.break_up_na_by_unit_stay(lab, args.output_dir, stayid=stay_id, verbose=1)
+    utils.break_up_na_by_unit_stay(na, args.output_dir, stayid=stay_id, verbose=1)
     del na
 
     print("reading nurseCharting table, might take some time")

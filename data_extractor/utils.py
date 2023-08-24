@@ -72,7 +72,7 @@ def filter_one_unit_stay(patients):
     return patients
 
 #Filter on useful columns from patient table
-#CONRAD - rm admityear
+#CONRAD - rm admityear indx=1
 def filter_patients_on_columns(patients):
     columns = ['patientunitstayid', 'hospitaladmityear', 'hospitaldischargeyear', 'hospitaldischargeoffset',
                'admissionheight', 'hospitaladmitoffset', 'admissionweight',
@@ -140,7 +140,7 @@ def read_na_table(eicu_path):
     return na
 
 #Write the nc values of each patient into a na.csv file
-def break_up_stays_by_unit_stay_na(nurseAssess, output_path, stayid=None, verbose=1):
+def break_up_na_by_unit_stay(nurseAssess, output_path, stayid=None, verbose=1):
     unit_stays = nurseAssess.patientunitstayid.unique() if stayid is None else stayid
     nb_unit_stays = unit_stays.shape[0]
     for i, stay_id in enumerate(unit_stays):
