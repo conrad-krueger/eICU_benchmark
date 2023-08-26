@@ -48,7 +48,6 @@ def run_training(config, output_dim, activation):
             input_size = 200#200
 
         model = network(config, input_size, output_dim=output_dim, activation=activation)
-
         history = model.fit_generator(train_gen, steps_per_epoch=25,
                             epochs=config.epochs, verbose=1, shuffle=True)
 

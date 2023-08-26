@@ -4,7 +4,7 @@ import itertools
 
 from keras import backend as K
 
-TASK = ['rlos']#'mort', 'phen', 'rlos','dec'
+TASK = ['mort','rlos','dec'] #, 'phen',
 NUM = [True]
 CAT = [True]
 OHE = [False]

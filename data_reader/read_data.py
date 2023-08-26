@@ -10,7 +10,7 @@ def get_nlabels(config):
         n_labels = 1
     return n_labels
 
-def get_task_specific_features(config, data, n_cat=7):
+def get_task_specific_features(config, data, n_cat=5):
     if config.num and config.cat:
         return np.array(data)
     elif config.num:
@@ -93,9 +93,9 @@ def batch_generator(config, data, labels, nrows=None, batch_size=1024, rng=np.ra
                 nrows_batch = np.array(nrows)[i:i+batch_size]
 
             if config.num and config.cat:
-                x_cat = x_batch[:, :, :7].astype(int)
+                x_cat = x_batch[:, :, :5].astype(int)
                 if config.ohe: x_cat = get_one_hot(x_cat, config.n_cat_class)
-                x_num = x_batch[:, :, 7:]
+                x_num = x_batch[:, :, 5:]
                 yield [x_cat, x_num], y_batch
 
             elif config.cat:

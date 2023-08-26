@@ -3,8 +3,8 @@ class Config():
         self.seed = 36
 
         # data dir
-        self.root_dir = 'extracted data dir'
-        self.eicu_dir = 'eICU dataset dir'
+        self.root_dir = 'output'
+        self.eicu_dir = 'data'
 
         # task details
         self.task = args.task # ['phen', 'dec', 'mort', 'rlos']
