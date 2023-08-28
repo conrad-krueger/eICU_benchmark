@@ -31,7 +31,7 @@ def build_network(config, input_size, output_dim=1, activation='sigmoid'):
 
     mask = Masking(mask_value=0., name="maski")(inp)
 
-    out = Dense(1, activation="relu")(mask)
+    out = Dense(output_dim, activation="relu")(mask)
 
 
     if config.num and config.cat:

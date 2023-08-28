@@ -7,9 +7,9 @@ def get_optimizer(lr=0.0005):
 
 def get_loss(task='rlos'):
     if task in ['mort', 'phen', 'dec']:
-        return "binary_crossentropy",
+        return "binary_crossentropy"
     elif task == 'rlos':
-        return 'mean_squared_error',
+        return 'mean_squared_error'
     else:
         print('Invalid task name')
         return False
