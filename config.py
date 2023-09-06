@@ -18,7 +18,7 @@ class Config():
         #model params
         self.save_dir = 'results/'
         self.embedding_dim = 5
-        self.epochs = 100
+        self.epochs = 5
         self.batch_size = 512
 
         self.ann = args.ann #

@@ -13,32 +13,32 @@ def data_extraction_root(args):
     if not os.path.exists(eicu_dir):
         os.mkdir(eicu_dir)
 
-    patients = utils.read_patients_table(args.eicu_dir, args.output_dir)
-    stay_id = utils.cohort_stay_id(patients)
-    utils.break_up_stays_by_unit_stay(patients, args.output_dir,stayid=stay_id, verbose=1)
-    del patients
+    # patients = utils.read_patients_table(args.eicu_dir, args.output_dir)
+    # stay_id = utils.cohort_stay_id(patients)
+    # utils.break_up_stays_by_unit_stay(patients, args.output_dir,stayid=stay_id, verbose=1)
+    # del patients
 
     print("reading lab table")
-    lab = utils.read_lab_table(args.eicu_dir)
-    utils.break_up_lab_by_unit_stay(lab, args.output_dir, stayid=stay_id, verbose=1)
-    del lab
+    # lab = utils.read_lab_table(args.eicu_dir)
+    # utils.break_up_lab_by_unit_stay(lab, args.output_dir, stayid=stay_id, verbose=1)
+    # del lab
 
     print("reading nurseAssessment table")
-    na = utils.read_na_table(args.eicu_dir)
-    utils.break_up_na_by_unit_stay(na, args.output_dir, stayid=stay_id, verbose=1)
-    del na
+    # na = utils.read_na_table(args.eicu_dir)
+    # utils.break_up_na_by_unit_stay(na, args.output_dir, stayid=stay_id, verbose=1)
+    # del na
 
     print("reading nurseCharting table, might take some time")
-    nc = utils.read_nc_table(args.eicu_dir)
-    utils.break_up_stays_by_unit_stay_nc(nc, args.output_dir, stayid=stay_id, verbose=1)
-    del nc
+    # nc = utils.read_nc_table(args.eicu_dir)
+    # utils.break_up_stays_by_unit_stay_nc(nc, args.output_dir, stayid=stay_id, verbose=1)
+    # del nc
 
     #Write the timeseries data into folders
     utils.extract_time_series_from_subject(args.output_dir)
     
-    utils.delete_wo_timeseries(args.output_dir)
+    #utils.delete_wo_timeseries(args.output_dir)
     #Write all the data into one dataframe
-    utils.all_df_into_one_df(args.output_dir)
+    #utils.all_df_into_one_df(args.output_dir)
 
 
 def main():

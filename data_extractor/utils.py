@@ -308,6 +308,7 @@ def extract_time_series_from_subject(t_path):
             if not os.path.isdir(dn):
                 raise Exception
         except:
+            print(dn, os.path.isdir(dn))
             continue
         try:
             pat = dataframe_from_csv(os.path.join(t_path, stay_dir, 'pats.csv'))
@@ -318,16 +319,19 @@ def extract_time_series_from_subject(t_path):
             timeepisode = convert_events_to_timeseries(nclab, variables=var_to_consider)
             nclabpat = pd.merge(timeepisode, pat, on='patientunitstayid')
             df = binning(nclabpat, 60)
-            df = imputer(df, strategy='normal')
+            #df = imputer(df, strategy='normal')
             if 15 <= df.shape[0] <= 200:
-                filter_15_200 += 1
+                
                 df = check_in_range(df)
-                df.to_csv(os.path.join(t_path, stay_dir, 'timeseries.csv'), index=False)
+                df.to_csv(os.path.join(t_path, stay_dir, 'timeseries2.csv'), index=False)
                 sys.stdout.write('\rWrite patient {0} / {1}'.format(i,len(os.listdir(t_path))))
                 
             else:
+                filter_15_200 += 1
                 continue
-        except:
+        except Exception as e:
+            print("err2")
+            print(e)
             continue
     print("Number of patients with less than 15 or more than 200 records:",filter_15_200)
     print('Convereted to time series')
@@ -377,17 +381,31 @@ def convert_events_to_timeseries(events, variable_column='itemname', variables=[
 def binning(df, x=60):
     null_columns = ['glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
                     'O2 Saturation', 'Respiratory Rate', 'Motor', 'Eyes', 'MAP (mmHg)',
-                    'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)', 'Capillary Refill']
+                    'Heart Rate', 'GCS Total', 'Verbal', 'pH', 'FiO2', 'Temperature (C)', 'Capillary Refill', 'admissionheight', 'admissionweight']
+    
+    NON_CAT = ['itemoffset', 'glucose', 'Invasive BP Diastolic', 'Invasive BP Systolic',
+                    'O2 Saturation', 'Respiratory Rate', 'MAP (mmHg)',
+                    'Heart Rate', 'pH', 'FiO2', 'Temperature (C)','admissionheight', 'admissionweight']
+    CAT = ['itemoffset', 'Motor', 'Eyes', 'GCS Total', 'Verbal', 'Capillary Refill']
 
     df['glucose'] = df['glucose'].shift(-1)
     df.dropna(how='all', subset=null_columns, inplace=True)
     df['itemoffset'] = (df['itemoffset'] / x).astype(int)
-    df = df.groupby('itemoffset').apply(lambda x: x.fillna(x.mean()))
-    df = df.droplevel(0, axis=0)
+    def mini_impute(x):
+        x[NON_CAT] = x[NON_CAT].fillna(x[NON_CAT].mean())
+        x[CAT] = x[CAT].fillna(x[CAT].mode())
+        #print(x)
+        return x
+
+    df = df.groupby('itemoffset').apply(mini_impute)
+    #df[NON_CAT] = df[NON_CAT].groupby('itemoffset').apply(lambda x: x.fillna(x.mean()))
+    #df[CAT] = df[CAT].groupby('itemoffset').apply(lambda x: x.fillna(x.mode()))
+    #print(df)
+    #df = df.droplevel(0, axis=0)
     df.drop_duplicates(subset=['itemoffset'], keep='last', inplace=True)
     return df
 
-#Imputation
+#Imputation GCS Total Respiratory Rate ['GCS Total', 'Eyes', 'Motor', 'Verbal', 'Capillary Refill']
 def imputer(dataframe, strategy='zero'):
     normal_values = {'Eyes': 4, 'GCS Total': 15, 'Heart Rate': 86, 'Motor': 6, 'Invasive BP Diastolic': 56,
                      'Invasive BP Systolic': 118, 'O2 Saturation': 98, 'Respiratory Rate': 19,

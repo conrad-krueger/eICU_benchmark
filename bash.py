@@ -8,9 +8,9 @@ TASK = ['mort','rlos','dec','phen']
 NUM = [True]
 CAT = [True]
 OHE = [True]
-ANN = [True, False]
-LIR = [True, False]
-LOR = [True, False]
+ANN = [False]
+LIR = [True]
+LOR = [False]
 
 
 class build_args():
@@ -19,7 +19,6 @@ class build_args():
 def run_model(task):
     l = [NUM, CAT, OHE, ANN,LIR,LOR]
     values = list(itertools.product(*l))
-    print(values)
     for val in values:
         nu, ca, oh, an, lir, lor = val
         if not nu and not ca:

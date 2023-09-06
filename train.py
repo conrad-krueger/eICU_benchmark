@@ -1,3 +1,4 @@
+import re
 import numpy as np
 import gc
 from data_extractor.utils import get_data_processors
@@ -48,6 +49,21 @@ def run_training(config, output_dim, activation):
             input_size = 200#200
 
         model = network(config, input_size, output_dim=output_dim, activation=activation)
+        
+        print("GEN INFO:")
+        res = next(train_gen)
+        print(len(res))
+        print(res[0][0].shape)
+        print(res[0][1].shape)
+        print(res[1].shape)
+        # categorical     #numeric        #y val
+        #[[(512, 200, 5), (512, 200, 12)], (512, 1)]
+        # print(type(res[0][0]))
+        # print(len(res[0][0]))
+        # print(res[0][0].shape)
+        # print(type(res[0][1]))
+        # print(len(res[0][1]))
+        # print(res[0][1].shape)
         history = model.fit_generator(train_gen, steps_per_epoch=25,
                             epochs=config.epochs, verbose=1, shuffle=True)
 
@@ -64,6 +80,7 @@ def run_training(config, output_dim, activation):
 
         results[fold_id] = evaluate(probs, labels, max_time_step_test)
         K.clear_session()
+        break
     return results
 
 def train_dec(config):

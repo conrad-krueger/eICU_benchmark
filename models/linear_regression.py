@@ -39,5 +39,5 @@ def build_network(config, input_size, output_dim=1, activation='sigmoid'):
     else:
         model = keras.models.Model(inputs=input1, outputs=out)
 
-    model.compile(loss=get_loss(config.task)[0], optimizer=get_optimizer(lr=config.lr) ,metrics=get_metrics_to_eval(config.task))
+    model.compile(loss=get_loss(config.task), optimizer=get_optimizer(lr=config.lr) ,metrics=get_metrics_to_eval(config.task))
     return model
