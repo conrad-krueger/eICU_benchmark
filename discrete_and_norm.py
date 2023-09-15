@@ -14,7 +14,7 @@ def discretize(filename, outfile):
                 timestep=1.0,
                 store_masks=True,
                 impute_strategy="previous",
-                start_time="relative",
+                start_time="zero",
             )
     df = pd.read_csv(filename)[PROPER_ORDER]
 
@@ -38,11 +38,11 @@ for i,filename in enumerate(os.listdir(directory)):
     # checking if it is a file
     if os.path.isdir(f):
         print(f)
-        #try:
-        discretize(f+"/timeseries1.csv",f+"/timeseries_change.csv")
-        #except Exception as e:
-        #    print("ERR:",e)
-        #    fail += 1
+        try:
+            discretize(f+"/timeseries.csv",f+"/timeseries.csv") 
+        except Exception as e:
+            print("ERR:",e)
+            fail += 1
 
 print(fail, n, fail/len(os.listdir(directory)))
 

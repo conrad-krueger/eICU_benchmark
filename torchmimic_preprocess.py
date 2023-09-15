@@ -102,6 +102,8 @@ class Discretizer:
 
         for row in X:
             t = float(row[0]) - first_time
+            if t < first_time: #CONRAD
+                continue
             if t > max_hours + eps:
                 continue
             bin_id = int(t / self._timestep - eps)

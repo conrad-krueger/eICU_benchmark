@@ -318,7 +318,7 @@ def extract_time_series_from_subject(t_path):
             nclab = pd.concat([nc, lab, na]).sort_values(by=['itemoffset'])
             timeepisode = convert_events_to_timeseries(nclab, variables=var_to_consider)
             nclabpat = pd.merge(timeepisode, pat, on='patientunitstayid')
-            df = binning(nclabpat, 60)
+            df = nclabpat #binning(nclabpat, 60)
             #df = imputer(df, strategy='normal')
             if 15 <= df.shape[0] <= 200:
                 
