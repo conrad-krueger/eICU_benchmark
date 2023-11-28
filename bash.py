@@ -7,10 +7,10 @@ from keras import backend as K
 TASK = ['mort','rlos','dec','phen']
 NUM = [True]
 CAT = [True]
-OHE = [True]
-ANN = [False]
-LIR = [True]
-LOR = [False]
+OHE = [False]
+ANN = [True, False]
+LIR = [True, False]
+LOR = [True, False]
 
 
 class build_args():

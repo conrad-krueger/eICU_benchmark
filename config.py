@@ -3,7 +3,7 @@ class Config():
         self.seed = 36
 
         # data dir
-        self.root_dir = 'output'
+        self.root_dir = 'origin_output'
         self.eicu_dir = 'data'
 
         # task details

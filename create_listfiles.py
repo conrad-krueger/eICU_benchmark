@@ -9,7 +9,7 @@ import shutil
 import os
  
 
-def get_pheno_listfile(pat_ids, split):
+def get_pheno_listfile(pat_ids, pats, split):
     if not os.path.exists("./data_mimicformat/phenotyping"):
         os.mkdir("./data_mimicformat/phenotyping")
 
@@ -61,14 +61,19 @@ def get_pheno_listfile(pat_ids, split):
     #my code
     print("[PHENO] Format listfile...")
     label=label.rename(columns={"patientunitstayid": "stay", "itemoffset":"period_length"})
-    label["period_length"] = diag.groupby('patientunitstayid')["itemoffset"].max()/60
 
+    pats = pats.set_index("patientunitstayid")
+    pats['unitdischargeoffset'] = pats['unitdischargeoffset']/60
+    #label 
+    label["period_length"] = pats['unitdischargeoffset'] #diag.groupby('patientunitstayid')["itemoffset"].max()/60
+    label = label.dropna()
     label = label.reset_index()
     label[label_pheno] = np.where(label[label_pheno] >= 1, 1, label[label_pheno])
     label=label.rename(columns={"patientunitstayid": "stay", "itemoffset":"period_length"})
     label["stay"] = label["stay"].apply(lambda x: f"{x}_episode1_timeseries.csv")
 
     label[label_pheno] = label[label_pheno].astype(int)
+    label = label.loc[label["period_length"]>0]
     print("[PHENO] Train-Val-Test Split...")
     if split:
         train, test, _, _ = train_test_split(label, label[label_pheno], test_size=0.15)
@@ -94,13 +99,18 @@ def get_pheno_listfile(pat_ids, split):
 def get_rlos_listfile(pats, tr, val, tst, split):
     df = pd.DataFrame(columns=["stay", "period_length", "y_true"], dtype=int)
     n = len(os.listdir("./data_mimicformat/phenotyping/train"))
+
+    #for i,filename in enumerate(pd.read_csv("data_mimicformat/phenotyping/train_listfile.csv")):
+
+
+
     for i,filename in enumerate(os.listdir("./data_mimicformat/phenotyping/train")):
         print(i/n)
         df1 = pd.read_csv("./data_mimicformat/phenotyping/train/"+filename)
         mx_rlos = df1["itemoffset"].max()
 
         df_curr = {"stay":[], "period_length":[], "y_true":[]}
-        for t in range(5, int(mx_rlos)):
+        for t in range(12, int(mx_rlos)):
             df_curr["stay"].append(filename)
             df_curr["period_length"].append(t)
             df_curr["y_true"].append(float(mx_rlos)-t)
@@ -111,7 +121,7 @@ def get_rlos_listfile(pats, tr, val, tst, split):
         mx_rlos = df1["itemoffset"].max()
 
         df_curr = {"stay":[], "period_length":[], "y_true":[]}
-        for t in range(5, int(mx_rlos)):
+        for t in range(12, int(mx_rlos)):
             df_curr["stay"].append(filename)
             df_curr["period_length"].append(t)
             df_curr["y_true"].append(float(mx_rlos)-t)
@@ -149,6 +159,8 @@ def get_rlos_listfile(pats, tr, val, tst, split):
     return df
 
 def get_decomp_listfile(pats, pat_ids, tr, tst, val, split):
+
+    print("Create LOS and decomp folders...")
     if not os.path.exists("./data_mimicformat/decompensation"):
         os.mkdir("./data_mimicformat/decompensation")
 
@@ -164,22 +176,39 @@ def get_decomp_listfile(pats, pat_ids, tr, tst, val, split):
     df = df.loc[df["stay"].apply(lambda x: os.path.exists(f"./data_temp/{x}_episode1_timeseries.csv"))]
     df["stay"] = pats["patientunitstayid"].apply(lambda x: f"{x}_episode1_timeseries.csv")
 
+    print("Create train, test, val...")
     df_id = df.set_index("stay")
     train = df_id.loc[tr].reset_index()
     test = df_id.loc[tst].reset_index()
     val = df_id.loc[val].reset_index()
 
+    print(train)
+    print(test)
+    print(val)
+
     with open("./data_mimicformat/decompensation/train_listfile.csv", "w") as f:
         f.write("stay,period_length,y_true,y_remain\n")
-        for i in range(1,len(train)):
+        for i in range(len(train)):
             row = train.iloc[i]
-            print("Train",i/len(train))
+            print("Train:",i/len(train),end="\r")
             st, pl, y = row['stay'], row['period_length'], row['y_true']
-            for i in range(1,int(pl)-10):
+            
+            df_temp = pd.read_csv(f"data_temp/{st}")
+            df_temp = df_temp.loc[df_temp['itemoffset']>0]
+            
+            try:
+                mn_read = int(df_temp['itemoffset'].dropna().min())+1
+            except:
+                print(df_temp)
+                print(st)
+
+
+            for i in range(mn_read,int(pl)-10):
                 if pl - i <= 24 and y == 1:
-                    f.write(f"{st},{pl - i},{y},{i}\n")
+                    f.write(f"{st},{i},{y},{pl - i}\n")
                 else:
-                    f.write(f"{st},{pl - i},0,{i}\n")
+                    f.write(f"{st},{i},0,{pl - i}\n")
+        print()
     
     train = pd.read_csv("./data_mimicformat/decompensation/train_listfile.csv")
     train1 = train.sample(frac = 1).drop("y_remain",axis=1)
@@ -190,15 +219,25 @@ def get_decomp_listfile(pats, pat_ids, tr, tst, val, split):
 
     with open("./data_mimicformat/decompensation/val_listfile.csv", "w") as f:
         f.write("stay,period_length,y_true,y_remain\n")
-        for i in range(1,len(val)):
+        for i in range(len(val)):
             row = val.iloc[i]
             print(i/len(val))
             st, pl, y = row['stay'], row['period_length'], row['y_true']
-            for i in range(1,int(pl)-10):
+
+            df_temp = pd.read_csv(f"data_temp/{st}")
+            df_temp = df_temp.loc[df_temp['itemoffset']>0]
+            
+            try:
+                mn_read = int(df_temp['itemoffset'].dropna().min())+1
+            except:
+                print(df_temp)
+                print(st)
+
+            for i in range(mn_read,int(pl)-10):
                 if pl - i <= 24 and y == 1:
-                    f.write(f"{st},{pl - i},{y},{i}\n")
+                    f.write(f"{st},{i},{y},{pl - i}\n")
                 else:
-                    f.write(f"{st},{pl - i},0,{i}\n")
+                    f.write(f"{st},{i},0,{pl - i}\n")
     
     train = pd.read_csv("./data_mimicformat/decompensation/val_listfile.csv")
     train1 = train.sample(frac = 1).drop("y_remain",axis=1)
@@ -209,15 +248,26 @@ def get_decomp_listfile(pats, pat_ids, tr, tst, val, split):
 
     with open("./data_mimicformat/decompensation/test_listfile.csv", "w") as f:
         f.write("stay,period_length,y_true,y_remain\n")
-        for i in range(1,len(val)):
-            row = val.iloc[i]
+        for i in range(len(test)):
+            row = test.iloc[i]
             print(i/len(val))
             st, pl, y = row['stay'], row['period_length'], row['y_true']
-            for i in range(1,int(pl)-10):
+
+            df_temp = pd.read_csv(f"data_temp/{st}")
+            df_temp = df_temp.loc[df_temp['itemoffset']>0]
+            
+            try:
+                mn_read = int(df_temp['itemoffset'].dropna().min())+1
+            except:
+                print(df_temp)
+                print(st)
+
+
+            for i in range(mn_read,int(pl)-10):
                 if pl - i <= 24 and y == 1:
-                    f.write(f"{st},{pl - i},{y},{i}\n")
+                    f.write(f"{st},{i},{y},{pl - i}\n")
                 else:
-                    f.write(f"{st},{pl - i},0,{i}\n")
+                    f.write(f"{st},{i},0,{pl - i}\n")
     
     train = pd.read_csv("./data_mimicformat/decompensation/test_listfile.csv")
     train1 = train.sample(frac = 1).drop("y_remain",axis=1)
@@ -292,6 +342,24 @@ def get_mortality_listfile(pats, pat_ids, split):
 
     return train["stay"], val["stay"], test["stay"]
 
+def elim_neg_files(directory):
+    for filename in os.listdir(directory):
+        if pd.read_csv(os.path.join(directory, filename))['itemoffset'].max() <= 0:
+            os.remove(os.path.join(directory, filename))
+
+def crop_past_icu(directory):
+    pats = pd.read_csv("data/patient.csv")[["patientunitstayid", "unitdischargeoffset"]].set_index("patientunitstayid")
+    n = len(os.listdir(directory))
+    for i,filename in enumerate(os.listdir(directory)):
+        print(f"Cropped: {i/n*100:.2f}%", end="\r")
+        curr = pd.read_csv(os.path.join(directory, filename))
+
+        mx = float(pats.loc[int(filename.split("_")[0])]["unitdischargeoffset"])/60
+        curr = curr[curr["itemoffset"]<=mx]
+        curr.to_csv(os.path.join(directory, filename), index=False)
+    print()
+
+
 def move_files(directory):
     os.mkdir("data_mimicformat")
     os.mkdir("data_temp")
@@ -313,13 +381,25 @@ def main():
     parser.add_argument("--decomp", action="store_true")  
     parser.add_argument("--pheno", action="store_true")  
     parser.add_argument("--reset", action="store_true")  
+    parser.add_argument("--elim", action="store_true")  
+    parser.add_argument("--ceil", action="store_true")  
+
     args = parser.parse_args()
+
+    if args.ceil:
+        crop_past_icu("data_temp")
     
+    if args.elim:
+        elim_neg_files("data_temp")
     if args.move:
         move_files("output")
     
     if args.reset:
         shutil.rmtree("data_mimicformat/phenotyping")
+        shutil.rmtree("data_mimicformat/decompensation")
+        shutil.rmtree("data_mimicformat/length-of-stay")
+        #shutil.rmtree("data_mimicformat/in-hospital-mortality")
+        return
     
     pats = pd.read_csv("data/patient.csv")
     pat_ids = set(os.listdir("output"))
@@ -329,7 +409,7 @@ def main():
     pat_ids = set([int(filename.split("_")[0]) for filename in os.listdir(f"./data_temp/")])
 
     if args.all or args.pheno:
-        tr, val, tst = get_pheno_listfile(pat_ids, args.split)
+        tr, val, tst = get_pheno_listfile(pat_ids, pats, args.split)
 
     if args.all or args.ihm:
         get_mortality_listfile(pats, pat_ids, args.split)
